@@ -70,34 +70,34 @@ struct ast_node_program;
 // ===============================
 
 typedef enum type_go {
-  GT_UNKNOW = 0,
+  TG_UNKNOW = 0,
 
-  GT_VOID,
+  TG_VOID,
 
-  GT_INT8,
-  GT_INT16,
-  GT_INT32,
-  GT_INT64,
+  TG_INT8,
+  TG_INT16,
+  TG_INT32,
+  TG_INT64,
 
-  GT_UINT8,
-  GT_UINT16,
-  GT_UINT32,
-  GT_UINT64,
+  TG_UINT8,
+  TG_UINT16,
+  TG_UINT32,
+  TG_UINT64,
 
-  GT_FLOAT,
-  GT_DOUBLE,
+  TG_FLOAT,
+  TG_DOUBLE,
 
-  GT_CHAR,
-  GT_STRING,
+  TG_CHAR,
+  TG_STRING,
 
-  GT_BOOL,
+  TG_BOOL,
 
-  GT_POINTER,
-  GT_ARRAY,
-  GT_STRUCT,
-  GT_ENUM,
-  GT_FUNCTION,
-  GT_INTERFACE,
+  TG_POINTER,
+  TG_ARRAY,
+  TG_STRUCT,
+  TG_ENUM,
+  TG_FUNCTION,
+  TG_INTERFACE,
 } TypeGo;
 
 typedef enum ast_node_type {
