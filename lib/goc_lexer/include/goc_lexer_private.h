@@ -66,9 +66,11 @@
 #define KEYWORD_STRUCT  "struct"
 #define KEYWORD_INTER   "interface"
 #define KEYWORD_ENUM    "enum"
-#define KEYWORD_NIL     "nil"
-#define KEYWORD_RETURN  "return"
+#define KEYWORD_UNION   "union"
 
+#define KEYWORD_NIL     "nil"
+#define KEYWORD_IOTA    "iota"
+#define KEYWORD_RETURN  "return"
 #define KEYWORD_VAR     "var"
 #define KEYWORD_CONST   "const"
 
@@ -123,9 +125,9 @@ struct token_pos {
 };
 
 union token_value {
-  long  num_lit;
-  float real_lit;
-  char  text[TOKEN_TEXT_MAX_SIZE];
+  int64_t num_lit;
+  double  real_lit;
+  char    text[TOKEN_TEXT_MAX_SIZE];
 };
 
 struct token {
@@ -153,10 +155,10 @@ static char        goc_lexer_consume_wspace(FILE *file, struct token_pos *global
 static bool        goc_lexer_consume_char(FILE *file, struct token_pos *global, struct token_pos *pos, const char ch);
 static char        goc_lexer_consume_comment(FILE *file, struct token_pos *global, struct token_pos *pos, char ch);
 static TokenType   goc_lexer_consume_number(FILE *file, struct token_pos *global, struct token_pos *pos, union token_value *value);
-static TokenType goc_lexer_consume_string_lit(
+static TokenType   goc_lexer_consume_string_lit(
   FILE *file, struct token_pos *global, struct token_pos *pos, union token_value *value, char ch
 );
-static TokenType goc_lexer_consume_char_lit(
+static TokenType   goc_lexer_consume_char_lit(
   FILE *file, struct token_pos *global, struct token_pos *pos, union token_value *value, char ch
 );
 
@@ -177,11 +179,15 @@ static bool        goc_lexer_increment(FILE *file, struct token_pos *global, str
 static bool        goc_lexer_package(char *word);
 static bool        goc_lexer_import(char *word);
 static bool        goc_lexer_typedef(char *word);
+
 static bool        goc_lexer_func(char *word);
 static bool        goc_lexer_struct(char *word);
 static bool        goc_lexer_interface(char *word);
 static bool        goc_lexer_enum(char *word);
+static bool        goc_lexer_union(char *word);
+
 static bool        goc_lexer_nil(char *word);
+static bool        goc_lexer_iota(char *word);
 static bool        goc_lexer_return(char *word);
 static bool        goc_lexer_var(char *word);
 static bool        goc_lexer_const(char *word);

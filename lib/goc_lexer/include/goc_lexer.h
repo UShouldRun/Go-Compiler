@@ -20,15 +20,19 @@ typedef enum token_type {
 
   TT_IF, TT_ELSE,
   TT_SWITCH,
-  TT_WHILE, TT_FOR, TT_DO, TT_NULL_ITERATOR, TT_RANGE,
+  TT_WHILE, TT_FOR, TT_DO,
+  TT_NULL_ITERATOR, TT_RANGE,
 
   TT_PACKAGE,
   TT_IMPORT,
   TT_TYPE,
+
   TT_FUNC,
   TT_STRUCT,
   TT_INTERFACE,
   TT_ENUM,
+  TT_UNION,
+
   TT_NIL,
   TT_RETURN,
   TT_VAR,
@@ -58,10 +62,20 @@ typedef enum token_type {
 typedef struct token       *Token;
 typedef struct token_array *TokenArray;
 
-TokenArray  goc_lexer(const char *file);
-Token       goc_lexer_token_array_at(TokenArray token_array, size_t index);
-size_t      goc_lexer_token_array_get_size(TokenArray token_array);
-void        goc_lexer_token_array_free(TokenArray token_array);
-const char *goc_lexer_token_to_str(Token token);
+TokenArray      goc_lexer(const char *file);
+Token           goc_lexer_token_array_at(TokenArray token_array, size_t index);
+size_t          goc_lexer_token_array_get_size(TokenArray token_array);
+void            goc_lexer_token_array_free(TokenArray token_array);
+
+const TokenType goc_lexer_token_get_token_type(Token token);
+const size_t    goc_lexer_token_get_pos_abs(Token token); 
+const size_t    goc_lexer_token_get_pos_line(Token token); 
+const size_t    goc_lexer_token_get_pos_rel(Token token); 
+const size_t    goc_lexer_token_get_pos_s_word(Token token); 
+int64_t         goc_lexer_token_get_value_number_literal(Token token);
+double          goc_lexer_token_get_value_real_literal(Token token);
+char           *goc_lexer_token_get_value_text(Token token);
+
+const char     *goc_lexer_token_to_str(Token token);
 
 #endif // !GOC_LEXER_H

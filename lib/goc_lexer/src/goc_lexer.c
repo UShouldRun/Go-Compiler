@@ -54,6 +54,51 @@ void goc_lexer_token_array_free(TokenArray token_array) {
   free(token_array);
 }
 
+const TokenType goc_lexer_token_get_token_type(Token token) {
+  goc_error_assert(goc_error_nullptr, token != NULL);
+  return token->type;
+}
+
+const size_t goc_lexer_token_get_pos_abs(Token token) {
+  goc_error_assert(goc_error_nullptr, token != NULL);
+  return token->pos.abs;
+}
+
+const size_t goc_lexer_token_get_pos_line(Token token) {
+  goc_error_assert(goc_error_nullptr, token != NULL);
+  return token->pos.line;
+}
+
+const size_t goc_lexer_token_get_pos_rel(Token token) {
+  goc_error_assert(goc_error_nullptr, token != NULL);
+  return token->pos.rel;
+}
+
+const size_t goc_lexer_token_get_pos_s_word(Token token) {
+  goc_error_assert(goc_error_nullptr, token != NULL);
+  return token->pos.s_word;
+}
+
+int64_t goc_lexer_token_get_value_number_literal(Token token) {
+  goc_error_assert(goc_error_nullptr, token != NULL);
+  return token->value.num_lit;
+}
+
+double goc_lexer_token_get_value_real_literal(Token token) {
+  goc_error_assert(goc_error_nullptr, token != NULL);
+  return token->value.real_lit;
+}
+
+char *goc_lexer_token_get_value_text(Token token) {
+  goc_error_assert(goc_error_nullptr, token != NULL);
+  size_t len = strlen(token->value.text);
+  char *cp = (char *)calloc(len, sizeof(char));
+  if (cp == NULL)
+    return NULL;
+  strncpy(cp, token->value.text, len);
+  return cp;
+}
+
 const char *goc_lexer_token_to_str(Token token) {
   if (token == NULL)
     return NULL;
@@ -156,13 +201,19 @@ static TokenType goc_lexer_get_token(FILE *file, struct token_pos *global, struc
 
     case CHAR_COLON:      return goc_lexer_auto_assign(file, global, pos, CHAR_COLON) ? TT_AUTO_ASSIGN : TT_COLON;
     case CHAR_EQUAL:      return goc_lexer_double_equal(file, global, pos, CHAR_EQUAL) ? TT_DOUBLE_EQUAL : TT_EQUAL;
-    case CHAR_PERIOD:     return isdigit(goc_lexer_peek(file)) ? goc_lexer_consume_number(file, global, pos, value) : TT_PERIOD;
     case CHAR_AMPER:      return goc_lexer_consume_char(file, global, pos, CHAR_AMPER) ? TT_AND : TT_AND_BIT_OP;
     case CHAR_BAR:        return goc_lexer_consume_char(file, global, pos, CHAR_BAR) ? TT_OR : TT_OR_BIT_OP;
     case CHAR_PLUS:       return goc_lexer_increment(file, global, pos, ch) ? TT_INCR : TT_PLUS;
     case CHAR_MINUS:      return goc_lexer_consume_char(file, global, pos, CHAR_GTHAN) ? TT_ARROW : TT_MINUS;
     case CHAR_QUOTE:      return goc_lexer_consume_string_lit(file, global, pos, value, ch);
     case CHAR_APOST:      return goc_lexer_consume_char_lit(file, global, pos, value, ch);
+
+    case CHAR_PERIOD: {
+      if (!isdigit(goc_lexer_peek(file)))
+        return TT_PERIOD;
+      goc_lexer_unconsume_char(file, global, pos, ch);
+      return goc_lexer_consume_number(file, global, pos, value);
+    }
  
     default: {
       if (isdigit(ch)) {
@@ -196,8 +247,13 @@ static TokenType goc_lexer_get_token(FILE *file, struct token_pos *global, struc
           return TT_INTERFACE;
         if (goc_lexer_enum(value->text))
           return TT_ENUM;
+        if (goc_lexer_union(value->text))
+          return TT_UNION;
+
         if (goc_lexer_nil(value->text))
           return TT_NIL;
+        if (goc_lexer_iota(value->text))
+          return TT_IOTA;
         if (goc_lexer_return(value->text))
           return TT_RETURN;
         if (goc_lexer_var(value->text))
@@ -339,11 +395,15 @@ static const char *goc_lexer_token_type_match_str(TokenType type) {
     case TT_PACKAGE:       return "T_PACKAGE";
     case TT_IMPORT:        return "TT_IMPORT";
     case TT_TYPE:          return "TT_TYPE";
+
     case TT_FUNC:          return "TT_FUNC";
     case TT_STRUCT:        return "TT_STRUCT";
     case TT_INTERFACE:     return "TT_INTERFACE";
     case TT_ENUM:          return "TT_ENUM";
+    case TT_UNION:         return "TT_UNION";
+
     case TT_NIL:           return "TT_NIL";
+    case TT_IOTA:          return "TT_IOTA";
     case TT_RETURN:        return "TT_RETURN";
     case TT_VAR:           return "TT_VAR";
     case TT_CONST:         return "TT_CONST";
@@ -487,7 +547,7 @@ static TokenType goc_lexer_consume_number(FILE *file, struct token_pos *global, 
   goc_error_assert(goc_error_nullptr, pos != NULL);
   goc_error_assert(goc_error_nullptr, value != NULL);
 
-  if (!isdigit(goc_lexer_peek(file)))
+  if (!goc_lexer_base_alpha(goc_lexer_peek(file)))
     goc_error_lexer_print_invalid_number(file, pos->abs, pos->line, pos->rel, pos->s_word);
 
   uint32_t base = BASE_10,
@@ -536,7 +596,7 @@ static TokenType goc_lexer_consume_string_lit(
   goc_error_assert(goc_error_nullptr, global != NULL);
   goc_error_assert(goc_error_nullptr, pos != NULL);
   if (ch != CHAR_QUOTE)
-    goc_error_print_invalid_string_lit(file, pos->line, pos->rel, pos->abs, pos->s_word);
+    goc_error_lexer_print_invalid_string_lit(file, pos->line, pos->rel, pos->abs, pos->s_word);
   value->text[0] = ch;
   size_t index = 1;
   for (; (ch = goc_lexer_consume(file, global, pos)) != CHAR_QUOTE; value->text[index] = ch, index++)
@@ -553,11 +613,11 @@ static TokenType goc_lexer_consume_char_lit(
   goc_error_assert(goc_error_nullptr, global != NULL);
   goc_error_assert(goc_error_nullptr, pos != NULL);
   if (ch != CHAR_APOST)
-    goc_error_print_invalid_char_lit(file, pos->line, pos->rel, pos->abs, pos->s_word);
+    goc_error_lexer_print_invalid_char_lit(file, pos->line, pos->rel, pos->abs, pos->s_word);
   value->text[0] = ch;
   value->text[1] = goc_lexer_consume(file, global, pos);
   if ((ch = goc_lexer_consume(file, global, pos)) != CHAR_QUOTE)
-    goc_error_print_invalid_char_lit(file, pos->line, pos->rel, pos->abs, pos->s_word);
+    goc_error_lexer_print_invalid_char_lit(file, pos->line, pos->rel, pos->abs, pos->s_word);
   value->text[2] = ch;
   return TT_CHAR_LIT;
 }
@@ -649,8 +709,16 @@ static bool goc_lexer_enum(char *word) {
   return word ? strcmp(word, KEYWORD_ENUM) == 0 : false;
 }
 
+static bool goc_lexer_union(char *word) {
+  return word ? strcmp(word, KEYWORD_UNION) == 0 : false;
+}
+
 static bool goc_lexer_nil(char *word) {
   return word ? strcmp(word, KEYWORD_NIL) == 0 : false;
+}
+
+static bool goc_lexer_iota(char *word) {
+  return word ? strcmp(word, KEYWORD_IOTA) == 0 : false;
 }
 
 static bool goc_lexer_return(char *word) {
