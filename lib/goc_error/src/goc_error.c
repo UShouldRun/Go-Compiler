@@ -60,9 +60,9 @@ static void _goc_error_print(
     line_buffer,
     intlen(current_line), "",
     ANSI_COLORS[ANSI_COLOR_RED],
-    /*0, CHAR_GOC_ERROR_UNDERLINE,*/
-    pos_rel, CHAR_GOC_ERROR_POINTER,
-    /*s_word - 1, CHAR_GOC_ERROR_UNDERLINE,*/
+    /*0, GOC_CHAR_ERROR_UNDERLINE,*/
+    pos_rel, GOC_CHAR_ERROR_POINTER,
+    /*s_word - 1, GOC_CHAR_ERROR_UNDERLINE,*/
     ANSI_COLORS[ANSI_COLOR_RESET]
   );
   exit(error);

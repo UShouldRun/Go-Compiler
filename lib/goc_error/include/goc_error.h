@@ -91,7 +91,7 @@ void goc_error_lexer_print_invalid_char_lit(FILE *file, uint32_t pos_line, uint3
 
 // GOC PARSER
 void goc_error_parser_print_package_main_not_found(FILE *file, uint32_t pos_line, uint32_t pos_rel, uint32_t pos_abs, uint32_t s_word);
-void goc_error_parser_ast_undefined(uint32_t pos_line, uint32_t pos_rel, uint32_t pos_abs, uint32_t s_word);
+void goc_error_parser_print_ast_undefined(FILE *file, uint32_t pos_line, uint32_t pos_rel, uint32_t pos_abs, uint32_t s_word);
 
 typedef enum {
     ANSI_COLOR_RESET,

@@ -189,24 +189,75 @@ static TokenType goc_lexer_get_token(FILE *file, struct token_pos *global, struc
     case CHAR_SEMICOLON:  return TT_SEMICOLON;
     case CHAR_COMMA:      return TT_COMMA;
     case CHAR_QUESTMARK:  return TT_QUESTMARK;
-    case CHAR_PERCENT:    return TT_PERCENT;
-    case CHAR_BANG:       return TT_BANG;
-
-    case CHAR_SLASH:      return TT_DIV;
-    case CHAR_STAR:       return TT_STAR;
-    case CHAR_GTHAN:      return TT_GTHAN;
-    case CHAR_LTHAN:      return TT_LTHAN;
-
     case CHAR_EOF:        return TT_EOF;
 
-    case CHAR_COLON:      return goc_lexer_auto_assign(file, global, pos, CHAR_COLON) ? TT_AUTO_ASSIGN : TT_COLON;
-    case CHAR_EQUAL:      return goc_lexer_double_equal(file, global, pos, CHAR_EQUAL) ? TT_DOUBLE_EQUAL : TT_EQUAL;
-    case CHAR_AMPER:      return goc_lexer_consume_char(file, global, pos, CHAR_AMPER) ? TT_AND : TT_AND_BIT_OP;
-    case CHAR_BAR:        return goc_lexer_consume_char(file, global, pos, CHAR_BAR) ? TT_OR : TT_OR_BIT_OP;
-    case CHAR_PLUS:       return goc_lexer_increment(file, global, pos, ch) ? TT_INCR : TT_PLUS;
-    case CHAR_MINUS:      return goc_lexer_consume_char(file, global, pos, CHAR_GTHAN) ? TT_ARROW : TT_MINUS;
+    case CHAR_TIL:        return TT_UNOP_BIT_NOT;
+    case CHAR_STAR:       return goc_lexer_consume_char(file, global, pos, CHAR_EQUAL) ? TT_BINOP_ARIT_MUL_EQ     : TT_STAR; 
+    case CHAR_SLASH:      return goc_lexer_consume_char(file, global, pos, CHAR_EQUAL) ? TT_BINOP_ARIT_DIV_EQ     : TT_BINOP_ARIT_DIV;
+    case CHAR_PERCENT:    return goc_lexer_consume_char(file, global, pos, CHAR_EQUAL) ? TT_BINOP_ARIT_MOD_EQ     : TT_BINOP_ARIT_MOD;
+    case CHAR_BANG:       return goc_lexer_consume_char(file, global, pos, CHAR_EQUAL) ? TT_BINOP_COMP_NEQ        : TT_UNOP_LOG_NOT;
+    case CHAR_EQUAL:      return goc_lexer_consume_char(file, global, pos, CHAR_EQUAL) ? TT_BINOP_COMP_EQ         : TT_ASSIGN;
+    case CHAR_COLON:      return goc_lexer_consume_char(file, global, pos, CHAR_EQUAL) ? TT_AUTO_ASSIGN           : TT_COLON;
+    case CHAR_HAT:        return goc_lexer_consume_char(file, global, pos, CHAR_EQUAL) ? TT_BINOP_BIT_XOR_EQ      : TT_BINOP_BIT_XOR;
+
     case CHAR_QUOTE:      return goc_lexer_consume_string_lit(file, global, pos, value, ch);
     case CHAR_APOST:      return goc_lexer_consume_char_lit(file, global, pos, value, ch);
+
+    case CHAR_LTHAN: {
+      if (goc_lexer_consume_char(file, global, pos, CHAR_LTHAN)) {
+        if (goc_lexer_consume_char(file, global, pos, CHAR_EQUAL))
+          return TT_BINOP_BIT_LSHIFT_EQ;
+        return TT_BINOP_BIT_LSHIFT;
+      }
+      if (goc_lexer_consume_char(file, global, pos, CHAR_EQUAL))
+        return TT_BINOP_COMP_LTHAN_EQ;
+      return TT_BINOP_COMP_LTHAN;
+    }
+
+    case CHAR_GTHAN: {
+      if (goc_lexer_consume_char(file, global, pos, CHAR_GTHAN)) {
+        if (goc_lexer_consume_char(file, global, pos, CHAR_EQUAL))
+          return TT_BINOP_BIT_RSHIFT_EQ;
+        return TT_BINOP_BIT_RSHIFT;
+      }
+      if (goc_lexer_consume_char(file, global, pos, CHAR_EQUAL))
+        return TT_BINOP_COMP_GTHAN_EQ;
+      return TT_BINOP_COMP_GTHAN;
+    }
+
+    case CHAR_AMPER: {
+      if (goc_lexer_consume_char(file, global, pos, CHAR_AMPER))
+        return TT_BINOP_LOG_AND;
+      if (goc_lexer_consume_char(file, global, pos, CHAR_EQUAL))
+        return TT_BINOP_BIT_AND_EQ;
+      return  TT_AMPER;
+    } 
+
+    case CHAR_BAR: {
+      if (goc_lexer_consume_char(file, global, pos, CHAR_BAR))
+        return TT_BINOP_LOG_OR;
+      if (goc_lexer_consume_char(file, global, pos, CHAR_EQUAL))
+        return TT_BINOP_BIT_OR_EQ;
+      return TT_BINOP_BIT_OR;
+    }
+
+    case CHAR_PLUS: {
+      if (goc_lexer_consume_char(file, global, pos, CHAR_PLUS))
+        return TT_UNOP_INCR;
+      if (goc_lexer_consume_char(file, global, pos, CHAR_EQUAL))
+        return TT_BINOP_ARIT_PLUS_EQ;
+      return TT_PLUS;
+    } 
+
+    case CHAR_MINUS: {
+      if (goc_lexer_consume_char(file, global, pos, CHAR_MINUS))
+        return TT_UNOP_DECR;
+      if (goc_lexer_consume_char(file, global, pos, CHAR_EQUAL))
+        return TT_BINOP_ARIT_MINUS_EQ;
+      if (goc_lexer_consume_char(file, global, pos, CHAR_GTHAN))
+        return TT_ARROW;
+      return TT_MINUS;
+    }
 
     case CHAR_PERIOD: {
       if (!isdigit(goc_lexer_peek(file)))
@@ -220,7 +271,7 @@ static TokenType goc_lexer_get_token(FILE *file, struct token_pos *global, struc
         goc_lexer_unconsume_char(file, global, pos, ch);
         return goc_lexer_consume_number(file, global, pos, value);
       } else if (goc_lexer_ident(ch)) {
-        if (goc_lexer_null_iterator(file, global, pos, ch))
+        if (ch == CHAR_UNDER && !goc_lexer_ident(goc_lexer_peek(file)))
           return TT_NULL_ITERATOR;
 
         size_t index = 0;
@@ -300,6 +351,11 @@ static TokenType goc_lexer_get_token(FILE *file, struct token_pos *global, struc
           return TT_IF;
         if (goc_lexer_else(value->text))
           return TT_ELSE;
+
+        if (goc_lexer_switch(value->text))
+          return TT_SWITCH;
+        if (goc_lexer_case(value->text))
+          return TT_CASE;
         
         if (goc_lexer_do(value->text))
           return TT_DO;
@@ -322,94 +378,131 @@ static TokenType goc_lexer_get_token(FILE *file, struct token_pos *global, struc
 
 static const char *goc_lexer_token_type_match_str(TokenType type) {
   switch (type) {
-    case TT_LBRACE:        return "TT_LBRACE";
-    case TT_RBRACE:        return "TT_RBRACE";
-    case TT_LPAREN:        return "TT_LPAREN";
-    case TT_RPAREN:        return "TT_RPAREN";
-    case TT_LSQPAREN:      return "TT_LSQPAREN";
-    case TT_RSQPAREN:      return "TT_RSQPAREN";
+    case TT_LBRACE:              return "TT_LBRACE";
+    case TT_RBRACE:              return "TT_RBRACE";
+    case TT_LPAREN:              return "TT_LPAREN";
+    case TT_RPAREN:              return "TT_RPAREN";
+    case TT_LSQPAREN:            return "TT_LSQPAREN";
+    case TT_RSQPAREN:            return "TT_RSQPAREN";
 
-    case TT_SEMICOLON:     return "TT_SEMICOLON";
-    case TT_COMMA:         return "TT_COMMA";
-    case TT_AND:           return "TT_AND";
-    case TT_AND_BIT_OP:    return "TT_AND_BIT_OP";
-    case TT_OR:            return "TT_OR";
-    case TT_OR_BIT_OP:     return "TT_OR_BIT_OP";
-    case TT_QUESTMARK:     return "TT_QUESTMARK";
-    case TT_PERCENT:       return "TT_PERCENT";
-    case TT_BANG:          return "TT_BANG";
+    case TT_SEMICOLON:           return "TT_SEMICOLON";
+    case TT_COMMA:               return "TT_COMMA";
+    case TT_QUESTMARK:           return "TT_QUESTMARK";
+    case TT_COLON:               return "TT_COLON";
+    case TT_PERIOD:              return "TT_PERIOD";
+    case TT_EOF:                 return "TT_EOF";
 
-    case TT_DIV:           return "TT_DIV";
-    case TT_MINUS:         return "TT_MINUS";
-    case TT_STAR:          return "TT_STAR";
-    case TT_GTHAN:         return "TT_GTHAN";
-    case TT_LTHAN:         return "TT_LTHAN";
-    case TT_ARROW:         return "TT_ARROW";
+    // AMBIGUOUS UNTIL PARSING OPERATORS
+    case TT_PLUS:                return "TT_PLUS";
+    case TT_MINUS:               return "TT_MINUS";
+    case TT_STAR:                return "TT_STAR";
+    case TT_AMPER:               return "TT_AMPER";
+    case TT_ARROW:               return "TT_ARROW";
 
-    case TT_EOF:           return "TT_EOF";
+    // UNARY OPERATORS
+    case TT_UNOP_LOG_NOT:        return "TT_UNOP_LOG_NOT";
+    case TT_UNOP_BIT_NOT:        return "TT_UNOP_BIT_NOT";
+    case TT_UNOP_INCR:           return "TT_UNOP_INCR";
+    case TT_UNOP_DECR:           return "TT_UNOP_DECR";
 
-    case TT_AUTO_ASSIGN:   return "TT_AUTO_ASSIGN";      
-    case TT_COLON:         return "TT_COLON";
-    case TT_DOUBLE_EQUAL:  return "TT_DOUBLE_EQUAL";
-    case TT_EQUAL:         return "TT_EQUAL";
-    case TT_PERIOD:        return "TT_PERIOD";
-    case TT_INCR:          return "TT_INCR";
-    case TT_PLUS:          return "TT_PLUS";
+    // BIN OPERATORS
 
-    case TT_NUM_LIT:       return "TT_NUM_LIT";
-    case TT_REAL_LIT:      return "TT_REAL_LIT";
-    case TT_STRING_LIT:    return "TT_STRING_LIT";
-    case TT_CHAR_LIT:      return "TT_CHAR_LIT";
-
-    case TT_INT8:          return "TT_INT8";
-    case TT_INT16:         return "TT_INT16";
-    case TT_INT32:         return "TT_INT32";
-    case TT_INT64:         return "TT_INT64";
-
-    case TT_UINT8:         return "TT_UINT8";
-    case TT_UINT16:        return "TT_UINT16";
-    case TT_UINT32:        return "TT_UINT32";
-    case TT_UINT64:        return "TT_UINT64";
-
-    case TT_FLOAT:         return "TT_FLOAT";
-    case TT_DOUBLE:        return "TT_DOUBLE";
-
-    case TT_CHAR:          return "TT_CHAR";
-    case TT_STRING:        return "TT_STRING";
+      // ARITHMETIC
+    case TT_BINOP_ARIT_DIV:      return "TT_BINOP_ARIT_DIV";
+    case TT_BINOP_ARIT_MOD:      return "TT_BINOP_ARIT_MOD";
+    case TT_BINOP_ARIT_PLUS_EQ:  return "TT_BINOP_ARIT_PLUS_EQ";
+    case TT_BINOP_ARIT_MINUS_EQ: return "TT_BINOP_ARIT_MINUS_EQ";
+    case TT_BINOP_ARIT_MUL_EQ:   return "TT_BINOP_ARIT_MUL_EQ";
+    case TT_BINOP_ARIT_DIV_EQ:   return "TT_BINOP_ARIT_DIV_EQ";
+    case TT_BINOP_ARIT_MOD_EQ:   return "TT_BINOP_ARIT_MOD_EQ";
     
-    case TT_BOOL:          return "TT_BOOL";
-    case TT_TRUE_LIT:      return "TT_TRUE_LIT";
-    case TT_FALSE_LIT:     return "TT_FALSE_LIT";
+      // COMPARISON
+    case TT_BINOP_COMP_EQ:       return "TT_BINOP_COMP_EQ";
+    case TT_BINOP_COMP_NEQ:      return "TT_BINOP_COMP_NEQ";
+    case TT_BINOP_COMP_LTHAN:    return "TT_BINOP_COMP_LTHAN";
+    case TT_BINOP_COMP_GTHAN:    return "TT_BINOP_COMP_GTHAN";
+    case TT_BINOP_COMP_LTHAN_EQ: return "TT_BINOP_COMP_LTHAN_EQ";
+    case TT_BINOP_COMP_GTHAN_EQ: return "TT_BINOP_COMP_GTHAN_EQ";
 
-    case TT_IF:            return "TT_IF";
-    case TT_ELSE:          return "TT_ELSE";
+      // LOGICAL
+    case TT_BINOP_LOG_AND:       return "TT_BINOP_LOG_AND";
+    case TT_BINOP_LOG_OR:        return "TT_BINOP_LOG_OR";
+    
+      // BITWISE ARITHMETIC
+    case TT_BINOP_BIT_AND:       return "TT_BINOP_BIT_AND";
+    case TT_BINOP_BIT_OR:        return "TT_BINOP_BIT_OR";
+    case TT_BINOP_BIT_XOR:       return "TT_BINOP_BIT_XOR";
+    case TT_BINOP_BIT_LSHIFT:    return "TT_BINOP_BIT_LSHIFT";
+    case TT_BINOP_BIT_RSHIFT:      return "TT_BINOP_BIT_RSHIFT";
 
-    case TT_SWITCH:        return "TT_SWITCH";
+    case TT_BINOP_BIT_AND_EQ:    return "TT_BINOP_BIT_AND_EQ";
+    case TT_BINOP_BIT_OR_EQ:     return "TT_BINOP_BIT_OR_EQ";
+    case TT_BINOP_BIT_XOR_EQ:    return "TT_BINOP_BIT_XOR_EQ";
+    case TT_BINOP_BIT_LSHIFT_EQ: return "TT_BINOP_BIT_LSHIFT_EQ";
+    case TT_BINOP_BIT_RSHIFT_EQ: return "TT_BINOP_BIT_RSHIFT_EQ";
 
-    case TT_WHILE:         return "TT_WHILE";
-    case TT_FOR:           return "TT_FOR";
-    case TT_DO:            return "TT_DO";
-    case TT_NULL_ITERATOR: return "TT_NULL_ITERATOR";
-    case TT_RANGE:         return "TT_RANGE";
+    // ASSIGN
+    case TT_ASSIGN:              return "TT_ASSIGN";
+    case TT_AUTO_ASSIGN:         return "TT_AUTO_ASSIGN";      
 
-    case TT_PACKAGE:       return "T_PACKAGE";
-    case TT_IMPORT:        return "TT_IMPORT";
-    case TT_TYPE:          return "TT_TYPE";
+    // VALUES
+    case TT_NUM_LIT:             return "TT_NUM_LIT";
+    case TT_REAL_LIT:            return "TT_REAL_LIT";
 
-    case TT_FUNC:          return "TT_FUNC";
-    case TT_STRUCT:        return "TT_STRUCT";
-    case TT_INTERFACE:     return "TT_INTERFACE";
-    case TT_ENUM:          return "TT_ENUM";
-    case TT_UNION:         return "TT_UNION";
+    // KEYWORDS
+    case TT_STRING_LIT:          return "TT_STRING_LIT";
+    case TT_CHAR_LIT:            return "TT_CHAR_LIT";
 
-    case TT_NIL:           return "TT_NIL";
-    case TT_IOTA:          return "TT_IOTA";
-    case TT_RETURN:        return "TT_RETURN";
-    case TT_VAR:           return "TT_VAR";
-    case TT_CONST:         return "TT_CONST";
-    case TT_IDENT:         return "TT_IDENT";
+    case TT_INT8:                return "TT_INT8";
+    case TT_INT16:               return "TT_INT16";
+    case TT_INT32:               return "TT_INT32";
+    case TT_INT64:               return "TT_INT64";
+
+    case TT_UINT8:               return "TT_UINT8";
+    case TT_UINT16:              return "TT_UINT16";
+    case TT_UINT32:              return "TT_UINT32";
+    case TT_UINT64:              return "TT_UINT64";
+
+    case TT_FLOAT:               return "TT_FLOAT";
+    case TT_DOUBLE:              return "TT_DOUBLE";
+
+    case TT_CHAR:                return "TT_CHAR";
+    case TT_STRING:              return "TT_STRING";
+    
+    case TT_BOOL:                return "TT_BOOL";
+    case TT_TRUE_LIT:            return "TT_TRUE_LIT";
+    case TT_FALSE_LIT:           return "TT_FALSE_LIT";
+
+    case TT_IF:                  return "TT_IF";
+    case TT_ELSE:                return "TT_ELSE";
+
+    case TT_SWITCH:              return "TT_SWITCH";
+    case TT_CASE:                return "TT_CASE";
+
+    case TT_WHILE:               return "TT_WHILE";
+    case TT_FOR:                 return "TT_FOR";
+    case TT_DO:                  return "TT_DO";
+    case TT_NULL_ITERATOR:       return "TT_NULL_ITERATOR";
+    case TT_RANGE:               return "TT_RANGE";
+
+    case TT_PACKAGE:             return "TT_PACKAGE";
+    case TT_IMPORT:              return "TT_IMPORT";
+    case TT_TYPE:                return "TT_TYPE";
+
+    case TT_FUNC:                return "TT_FUNC";
+    case TT_STRUCT:              return "TT_STRUCT";
+    case TT_INTERFACE:           return "TT_INTERFACE";
+    case TT_ENUM:                return "TT_ENUM";
+    case TT_UNION:               return "TT_UNION";
+
+    case TT_NIL:                 return "TT_NIL";
+    case TT_IOTA:                return "TT_IOTA";
+    case TT_RETURN:              return "TT_RETURN";
+    case TT_VAR:                 return "TT_VAR";
+    case TT_CONST:               return "TT_CONST";
+    case TT_IDENT:               return "TT_IDENT";
  
-    default:               return "TT_UNKNOWN";
+    default:                     return "TT_UNKNOWN";
   }
 }
 
@@ -521,12 +614,14 @@ static char goc_lexer_consume_comment(FILE *file, struct token_pos *global, stru
   if (ch != CHAR_SLASH)
     return ch;
 
-  switch (ch = goc_lexer_consume(file, global, pos)) {
+  switch (ch = goc_lexer_peek(file)) {
     case CHAR_SLASH: {
+      (void)goc_lexer_consume_char(file, global, pos, CHAR_SLASH);
       while ((ch = goc_lexer_consume(file, global, pos)) != CHAR_NEW_LINE);
       break;
     }
     case CHAR_STAR: {
+      (void)goc_lexer_consume_char(file, global, pos, CHAR_STAR);
       char next = goc_lexer_consume(file, global, pos);
       for (; !goc_lexer_comment_block_end(ch, next); next = goc_lexer_consume(file, global, pos))
         if (goc_lexer_comment_block_end(next, ch = goc_lexer_consume(file, global, pos)))
@@ -534,8 +629,9 @@ static char goc_lexer_consume_comment(FILE *file, struct token_pos *global, stru
       ch = goc_lexer_consume(file, global, pos);
       break;
     }
-    default:
-      break;
+    default: {
+      return CHAR_SLASH;
+    }
   }
 
   return ch;
@@ -651,34 +747,6 @@ static bool goc_lexer_ident_middle(char ch) {
 
 static bool goc_lexer_skip(char ch) {
   return ch == CHAR_WSPACE || ch == CHAR_NEW_LINE || ch == CHAR_TAB;
-}
-
-static bool goc_lexer_null_iterator(FILE *file, struct token_pos *global, struct token_pos *pos, char ch) {
-  goc_error_assert(goc_error_nullptr, file != NULL);
-  goc_error_assert(goc_error_nullptr, global != NULL);
-  goc_error_assert(goc_error_nullptr, pos != NULL);
-  return ch == CHAR_UNDER && goc_lexer_consume_char(file, global, pos, CHAR_WSPACE);
-}
-
-static bool goc_lexer_auto_assign(FILE *file, struct token_pos *global, struct token_pos *pos, char ch) {
-  goc_error_assert(goc_error_nullptr, file != NULL);
-  goc_error_assert(goc_error_nullptr, global != NULL);
-  goc_error_assert(goc_error_nullptr, pos != NULL);
-  return ch == CHAR_COLON && goc_lexer_consume_char(file, global, pos, CHAR_EQUAL);
-}
-
-static bool goc_lexer_double_equal(FILE *file, struct token_pos *global, struct token_pos *pos, char ch) {
-  goc_error_assert(goc_error_nullptr, file != NULL);
-  goc_error_assert(goc_error_nullptr, global != NULL);
-  goc_error_assert(goc_error_nullptr, pos != NULL);
-  return ch == CHAR_EQUAL && goc_lexer_consume_char(file, global, pos, CHAR_EQUAL);
-}
-
-static bool goc_lexer_increment(FILE *file, struct token_pos *global, struct token_pos *pos, char ch) {
-  goc_error_assert(goc_error_nullptr, file != NULL);
-  goc_error_assert(goc_error_nullptr, global != NULL);
-  goc_error_assert(goc_error_nullptr, pos != NULL);
-  return ch == CHAR_PLUS && goc_lexer_consume_char(file, global, pos, CHAR_PLUS);
 }
 
 static bool goc_lexer_package(char *word) {
@@ -799,6 +867,14 @@ static bool goc_lexer_if(char *word) {
 
 static bool goc_lexer_else(char *word) {
   return word ? strcmp(word, KEYWORD_ELSE) == 0 : false;
+}
+
+static bool goc_lexer_switch(char *word) {
+  return word ? strcmp(word, KEYWORD_SWITCH) == 0 : false;
+}
+
+static bool goc_lexer_case(char *word) {
+  return word ? strcmp(word, KEYWORD_CASE) == 0 : false;
 }
 
 static bool goc_lexer_do(char *word) {

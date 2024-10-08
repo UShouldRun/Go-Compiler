@@ -44,6 +44,8 @@
 #define CHAR_PERIOD     '.'
 #define CHAR_BANG       '!'
 #define CHAR_UNDER      '_'
+#define CHAR_TIL        '~'
+#define CHAR_HAT        '^'
 
 #define CHAR_EQUAL      '='
 #define CHAR_PLUS       '+'
@@ -98,6 +100,9 @@
 
 #define KEYWORD_IF      "if"
 #define KEYWORD_ELSE    "else"
+
+#define KEYWORD_SWITCH  "switch"
+#define KEYWORD_CASE    "case"
 
 #define KEYWORD_DO      "do"
 #define KEYWORD_WHILE   "while"
@@ -171,11 +176,6 @@ static bool        goc_lexer_ident(char ch);
 static bool        goc_lexer_ident_middle(char ch);
 static bool        goc_lexer_skip(char ch);
 
-static bool        goc_lexer_null_iterator(FILE *file, struct token_pos *global, struct token_pos *pos, char ch);
-static bool        goc_lexer_auto_assign(FILE *file, struct token_pos *global, struct token_pos *pos, char ch);
-static bool        goc_lexer_double_equal(FILE *file, struct token_pos *global, struct token_pos *pos, char ch);
-static bool        goc_lexer_increment(FILE *file, struct token_pos *global, struct token_pos *pos, char ch);
-
 static bool        goc_lexer_package(char *word);
 static bool        goc_lexer_import(char *word);
 static bool        goc_lexer_typedef(char *word);
@@ -214,6 +214,9 @@ static bool        goc_lexer_false(char *word);
 
 static bool        goc_lexer_if(char *word);
 static bool        goc_lexer_else(char *word);
+
+static bool        goc_lexer_switch(char *word);
+static bool        goc_lexer_case(char *word);
 
 static bool        goc_lexer_do(char *word);
 static bool        goc_lexer_while(char *word);
